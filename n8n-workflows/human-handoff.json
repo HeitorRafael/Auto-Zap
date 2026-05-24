@@ -1,0 +1,221 @@
+{
+  "name": "AutoAtende — Handoff Humano → Chatwoot",
+  "nodes": [
+    {
+      "id": "node-webhook-handoff",
+      "name": "Webhook — Recebe Handoff",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "human-handoff",
+        "responseMode": "lastNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "node-buscar-ou-criar-contato",
+      "name": "Chatwoot — Buscar Contato",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [500, 300],
+      "parameters": {
+        "method": "GET",
+        "url": "=https://atende.{{ $vars.DOMAIN }}/api/v1/accounts/{{ $vars.CHATWOOT_ACCOUNT_ID }}/contacts/search?q={{ $json.body.telefone }}&include_contacts=true",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "api_access_token", "value": "={{ $vars.CHATWOOT_API_TOKEN }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "node-contato-existe",
+      "name": "Contato Já Existe?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [750, 300],
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $json.meta.count }}",
+              "operation": "larger",
+              "value2": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "node-criar-contato",
+      "name": "Chatwoot — Criar Contato",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1000, 450],
+      "parameters": {
+        "method": "POST",
+        "url": "=https://atende.{{ $vars.DOMAIN }}/api/v1/accounts/{{ $vars.CHATWOOT_ACCOUNT_ID }}/contacts",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "api_access_token", "value": "={{ $vars.CHATWOOT_API_TOKEN }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={\n  \"name\": \"{{ $('Webhook — Recebe Handoff').first().json.body.nome || 'Cliente WhatsApp' }}\",\n  \"phone_number\": \"+{{ $('Webhook — Recebe Handoff').first().json.body.telefone }}\"\n}"
+      }
+    },
+    {
+      "id": "node-obter-contact-id",
+      "name": "Obter Contact ID",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1250, 300],
+      "parameters": {
+        "jsCode": "// Pega o ID do contato — seja recém-criado ou já existente\nlet contactId;\n\ntry {\n  // Tenta pegar do resultado da busca\n  const busca = $('Chatwoot — Buscar Contato').first().json;\n  if (busca.payload && busca.payload.length > 0) {\n    contactId = busca.payload[0].id;\n  }\n} catch (e) {}\n\nif (!contactId) {\n  // Pega do contato recém-criado\n  const criado = $('Chatwoot — Criar Contato').first().json;\n  contactId = criado.id;\n}\n\nconst handoffData = $('Webhook — Recebe Handoff').first().json.body;\n\nreturn [{\n  json: {\n    contactId,\n    nome:             handoffData.nome || 'Cliente',\n    telefone:         handoffData.telefone || '',\n    mensagemOriginal: handoffData.mensagem_original || '',\n    motivo:           handoffData.motivo || 'Handoff solicitado'\n  }\n}];"
+      }
+    },
+    {
+      "id": "node-criar-conversa",
+      "name": "Chatwoot — Criar Conversa",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1500, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "=https://atende.{{ $vars.DOMAIN }}/api/v1/accounts/{{ $vars.CHATWOOT_ACCOUNT_ID }}/conversations",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "api_access_token", "value": "={{ $vars.CHATWOOT_API_TOKEN }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={\n  \"contact_id\": {{ $json.contactId }},\n  \"inbox_id\": {{ $vars.CHATWOOT_INBOX_ID }},\n  \"status\": \"open\",\n  \"additional_attributes\": {\n    \"origem\": \"AutoAtende Bot\",\n    \"motivo_handoff\": \"{{ $json.motivo }}\"\n  }\n}"
+      }
+    },
+    {
+      "id": "node-msg-contexto",
+      "name": "Chatwoot — Enviar Contexto",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1750, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "=https://atende.{{ $vars.DOMAIN }}/api/v1/accounts/{{ $vars.CHATWOOT_ACCOUNT_ID }}/conversations/{{ $json.id }}/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "api_access_token", "value": "={{ $vars.CHATWOOT_API_TOKEN }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={\n  \"content\": \"🤖 *Contexto do Bot:*\\n\\nCliente: {{ $('Obter Contact ID').first().json.nome }}\\nTelefone: {{ $('Obter Contact ID').first().json.telefone }}\\nÚltima mensagem: {{ $('Obter Contact ID').first().json.mensagemOriginal }}\\nMotivo do handoff: {{ $('Obter Contact ID').first().json.motivo }}\",\n  \"message_type\": \"activity\",\n  \"private\": true\n}"
+      }
+    },
+    {
+      "id": "node-notif-atendente",
+      "name": "Evolution — Avisar Atendente",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [2000, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $vars.EVOLUTION_URL }}/message/sendText/{{ $vars.INSTANCE_NAME }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "apikey", "value": "={{ $vars.EVOLUTION_API_KEY }}" }]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={\n  \"number\": \"{{ $vars.TELEFONE_ATENDENTE }}\",\n  \"text\": \"💬 *Novo atendimento no Chatwoot!*\\n\\nCliente: {{ $('Obter Contact ID').first().json.nome }}\\nMotivo: {{ $('Obter Contact ID').first().json.motivo }}\\n\\nAcesse: https://atende.{{ $vars.DOMAIN }}\"\n}"
+      }
+    },
+    {
+      "id": "node-atualizar-sheets",
+      "name": "Sheets — Marcar Transferido",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [2250, 300],
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $vars.SHEETS_ID_CLIENTE }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Leads",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Telefone": "={{ $('Obter Contact ID').first().json.telefone }}",
+            "Status":   "Transferido"
+          }
+        },
+        "matchingColumns": ["Telefone"]
+      },
+      "credentials": { "googleSheetsOAuth2Api": { "id": "cred-sheets", "name": "Google Sheets" } }
+    },
+    {
+      "id": "node-resposta-ok",
+      "name": "Resposta 200",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2500, 300],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"status\": \"ok\", \"message\": \"Conversa criada no Chatwoot\" }",
+        "options": { "responseCode": 200 }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook — Recebe Handoff": {
+      "main": [[{ "node": "Chatwoot — Buscar Contato", "type": "main", "index": 0 }]]
+    },
+    "Chatwoot — Buscar Contato": {
+      "main": [[{ "node": "Contato Já Existe?", "type": "main", "index": 0 }]]
+    },
+    "Contato Já Existe?": {
+      "main": [
+        [{ "node": "Obter Contact ID", "type": "main", "index": 0 }],
+        [{ "node": "Chatwoot — Criar Contato", "type": "main", "index": 0 }]
+      ]
+    },
+    "Chatwoot — Criar Contato": {
+      "main": [[{ "node": "Obter Contact ID", "type": "main", "index": 0 }]]
+    },
+    "Obter Contact ID": {
+      "main": [[{ "node": "Chatwoot — Criar Conversa", "type": "main", "index": 0 }]]
+    },
+    "Chatwoot — Criar Conversa": {
+      "main": [[{ "node": "Chatwoot — Enviar Contexto", "type": "main", "index": 0 }]]
+    },
+    "Chatwoot — Enviar Contexto": {
+      "main": [[{ "node": "Evolution — Avisar Atendente", "type": "main", "index": 0 }]]
+    },
+    "Evolution — Avisar Atendente": {
+      "main": [[{ "node": "Sheets — Marcar Transferido", "type": "main", "index": 0 }]]
+    },
+    "Sheets — Marcar Transferido": {
+      "main": [[{ "node": "Resposta 200", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": [{ "name": "autoatende" }, { "name": "handoff" }],
+  "meta": { "instanceId": "autoatende" }
+}

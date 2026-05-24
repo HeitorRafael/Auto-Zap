@@ -1,0 +1,250 @@
+{
+  "version": "6",
+  "id": "flow-imob-pg-001",
+  "name": "Imobiliária - Praia Grande",
+  "publishedTypebotId": null,
+  "icon": "🏠",
+  "folderId": null,
+  "publicId": "imobiliaria-praia-grande",
+  "customDomain": null,
+  "theme": {
+    "general": { "font": "Inter", "background": { "type": "Color", "content": "#ffffff" } },
+    "chat": {
+      "hostBubbles": { "backgroundColor": "#0F4C81", "color": "#ffffff" },
+      "guestBubbles": { "backgroundColor": "#f0f0f0", "color": "#111111" },
+      "buttons": { "backgroundColor": "#00C896", "color": "#ffffff" }
+    }
+  },
+  "settings": {
+    "typingEmulation": { "enabled": true, "speed": 300, "maxDelay": 1.5 },
+    "isBrandingEnabled": false,
+    "isInputPrefillEnabled": true
+  },
+  "variables": [
+    { "id": "v-nome",      "name": "nome" },
+    { "id": "v-tel",       "name": "telefone" },
+    { "id": "v-intencao",  "name": "intencao" },
+    { "id": "v-loc",       "name": "localizacao" },
+    { "id": "v-dorm",      "name": "dormitorios" },
+    { "id": "v-orc",       "name": "orcamento" }
+  ],
+  "webhooks": [
+    {
+      "id": "wh-imob",
+      "url": "https://n8n.DOMAIN/webhook/imobiliaria-lead",
+      "method": "POST",
+      "headers": [{ "key": "Content-Type", "value": "application/json" }],
+      "body": "{\"nome\":\"{{nome}}\",\"telefone\":\"{{telefone}}\",\"intencao\":\"{{intencao}}\",\"localizacao\":\"{{localizacao}}\",\"dormitorios\":\"{{dormitorios}}\",\"orcamento\":\"{{orcamento}}\",\"timestamp\":\"{{Today}}\"}"
+    }
+  ],
+  "groups": [
+    {
+      "id": "g-start",
+      "title": "Início",
+      "graphCoordinates": { "x": 0, "y": 200 },
+      "blocks": [{ "id": "b-start", "type": "start", "label": "Início" }]
+    },
+    {
+      "id": "g-bv",
+      "title": "Boas-vindas",
+      "graphCoordinates": { "x": 300, "y": 200 },
+      "blocks": [
+        {
+          "id": "b-bv",
+          "type": "text",
+          "content": { "richText": [
+            { "type": "p", "children": [{ "text": "Olá! Sou o assistente virtual da {{NOME_IMOBILIARIA}}. 👋" }] },
+            { "type": "p", "children": [{ "text": "Vou te ajudar a encontrar o imóvel certo rapidinho! 🏠" }] }
+          ]}
+        }
+      ]
+    },
+    {
+      "id": "g-intencao",
+      "title": "Intenção",
+      "graphCoordinates": { "x": 600, "y": 200 },
+      "blocks": [
+        {
+          "id": "b-intencao-msg",
+          "type": "text",
+          "content": { "richText": [{ "type": "p", "children": [{ "text": "O que você está procurando?" }] }] }
+        },
+        {
+          "id": "b-intencao-choice",
+          "type": "choice input",
+          "outputVariableId": "v-intencao",
+          "items": [
+            { "id": "i-alugar",  "content": "Quero Alugar" },
+            { "id": "i-comprar", "content": "Quero Comprar" },
+            { "id": "i-vender",  "content": "Tenho imóvel para alugar/vender" }
+          ],
+          "options": { "isMultipleChoice": false, "isSearchable": false }
+        }
+      ]
+    },
+    {
+      "id": "g-localizacao",
+      "title": "Localização",
+      "graphCoordinates": { "x": 900, "y": 200 },
+      "blocks": [
+        {
+          "id": "b-loc-msg",
+          "type": "text",
+          "content": { "richText": [{ "type": "p", "children": [{ "text": "Em qual região de Praia Grande você prefere?" }] }] }
+        },
+        {
+          "id": "b-loc-choice",
+          "type": "choice input",
+          "outputVariableId": "v-loc",
+          "items": [
+            { "id": "i-aviacao",     "content": "Aviação" },
+            { "id": "i-mirim",       "content": "Mirim" },
+            { "id": "i-guilhermina", "content": "Guilhermina" },
+            { "id": "i-ocian",       "content": "Ocian" },
+            { "id": "i-outro-loc",   "content": "Outra região" }
+          ],
+          "options": { "isMultipleChoice": false, "isSearchable": false }
+        }
+      ]
+    },
+    {
+      "id": "g-dormitorios",
+      "title": "Dormitórios",
+      "graphCoordinates": { "x": 1200, "y": 200 },
+      "blocks": [
+        {
+          "id": "b-dorm-msg",
+          "type": "text",
+          "content": { "richText": [{ "type": "p", "children": [{ "text": "Quantos dormitórios você procura?" }] }] }
+        },
+        {
+          "id": "b-dorm-choice",
+          "type": "choice input",
+          "outputVariableId": "v-dorm",
+          "items": [
+            { "id": "i-studio", "content": "Studio" },
+            { "id": "i-1dorm",  "content": "1 dormitório" },
+            { "id": "i-2dorm",  "content": "2 dormitórios" },
+            { "id": "i-3dorm",  "content": "3 ou mais" }
+          ],
+          "options": { "isMultipleChoice": false, "isSearchable": false }
+        }
+      ]
+    },
+    {
+      "id": "g-orcamento",
+      "title": "Orçamento",
+      "graphCoordinates": { "x": 1500, "y": 200 },
+      "blocks": [
+        {
+          "id": "b-orc-msg",
+          "type": "text",
+          "content": { "richText": [{ "type": "p", "children": [{ "text": "Qual é seu orçamento mensal para aluguel?" }] }] }
+        },
+        {
+          "id": "b-orc-choice",
+          "type": "choice input",
+          "outputVariableId": "v-orc",
+          "items": [
+            { "id": "i-orc1", "content": "Até R$ 1.500" },
+            { "id": "i-orc2", "content": "R$ 1.500 a R$ 2.500" },
+            { "id": "i-orc3", "content": "R$ 2.500 a R$ 4.000" },
+            { "id": "i-orc4", "content": "Acima de R$ 4.000" }
+          ],
+          "options": { "isMultipleChoice": false, "isSearchable": false }
+        }
+      ]
+    },
+    {
+      "id": "g-nome",
+      "title": "Coletar Nome",
+      "graphCoordinates": { "x": 1800, "y": 200 },
+      "blocks": [
+        {
+          "id": "b-nome-msg",
+          "type": "text",
+          "content": { "richText": [{ "type": "p", "children": [{ "text": "Ótimo! Para nosso corretor entrar em contato, me passa seu nome:" }] }] }
+        },
+        {
+          "id": "b-nome-input",
+          "type": "text input",
+          "outputVariableId": "v-nome",
+          "options": { "isLong": false, "labels": { "placeholder": "Seu nome completo", "button": "Enviar" } }
+        }
+      ]
+    },
+    {
+      "id": "g-tel",
+      "title": "Coletar Telefone",
+      "graphCoordinates": { "x": 2100, "y": 200 },
+      "blocks": [
+        {
+          "id": "b-tel-msg",
+          "type": "text",
+          "content": { "richText": [{ "type": "p", "children": [{ "text": "E seu WhatsApp com DDD:" }] }] }
+        },
+        {
+          "id": "b-tel-input",
+          "type": "phone number input",
+          "outputVariableId": "v-tel",
+          "options": {
+            "labels": { "placeholder": "(13) 9 XXXX-XXXX", "button": "Enviar" },
+            "retryMessageContent": "Número inválido. Por favor, insira com DDD."
+          }
+        }
+      ]
+    },
+    {
+      "id": "g-webhook",
+      "title": "Enviar para n8n",
+      "graphCoordinates": { "x": 2400, "y": 200 },
+      "blocks": [
+        {
+          "id": "b-webhook",
+          "type": "webhook",
+          "webhookId": "wh-imob",
+          "options": { "isAdvancedConfig": true, "isCustomBody": true, "isExecutedOnClient": false, "responseVariableMapping": [] }
+        }
+      ]
+    },
+    {
+      "id": "g-fim",
+      "title": "Encerramento",
+      "graphCoordinates": { "x": 2700, "y": 200 },
+      "blocks": [
+        {
+          "id": "b-fim",
+          "type": "text",
+          "content": { "richText": [
+            { "type": "p", "children": [{ "text": "Perfeito, {{nome}}! 🎉" }] },
+            { "type": "p", "children": [{ "text": "Nosso corretor já recebeu seus dados e vai te contatar em breve pelo WhatsApp." }] },
+            { "type": "p", "children": [{ "text": "Enquanto isso, veja nosso portfólio: {{LINK_PORTFOLIO}}" }] }
+          ]}
+        }
+      ]
+    }
+  ],
+  "edges": [
+    { "id": "e-start-bv",    "from": { "groupId": "g-start",     "blockId": "b-start" },                                  "to": { "groupId": "g-bv" } },
+    { "id": "e-bv-int",      "from": { "groupId": "g-bv",        "blockId": "b-bv" },                                     "to": { "groupId": "g-intencao" } },
+    { "id": "e-int-al",      "from": { "groupId": "g-intencao",  "blockId": "b-intencao-choice", "itemId": "i-alugar" },  "to": { "groupId": "g-localizacao" } },
+    { "id": "e-int-co",      "from": { "groupId": "g-intencao",  "blockId": "b-intencao-choice", "itemId": "i-comprar" }, "to": { "groupId": "g-localizacao" } },
+    { "id": "e-int-ve",      "from": { "groupId": "g-intencao",  "blockId": "b-intencao-choice", "itemId": "i-vender" },  "to": { "groupId": "g-localizacao" } },
+    { "id": "e-loc-av",      "from": { "groupId": "g-localizacao","blockId": "b-loc-choice", "itemId": "i-aviacao" },     "to": { "groupId": "g-dormitorios" } },
+    { "id": "e-loc-mi",      "from": { "groupId": "g-localizacao","blockId": "b-loc-choice", "itemId": "i-mirim" },       "to": { "groupId": "g-dormitorios" } },
+    { "id": "e-loc-gu",      "from": { "groupId": "g-localizacao","blockId": "b-loc-choice", "itemId": "i-guilhermina" }, "to": { "groupId": "g-dormitorios" } },
+    { "id": "e-loc-oc",      "from": { "groupId": "g-localizacao","blockId": "b-loc-choice", "itemId": "i-ocian" },       "to": { "groupId": "g-dormitorios" } },
+    { "id": "e-loc-ou",      "from": { "groupId": "g-localizacao","blockId": "b-loc-choice", "itemId": "i-outro-loc" },   "to": { "groupId": "g-dormitorios" } },
+    { "id": "e-dorm-st",     "from": { "groupId": "g-dormitorios","blockId": "b-dorm-choice", "itemId": "i-studio" },     "to": { "groupId": "g-orcamento" } },
+    { "id": "e-dorm-1",      "from": { "groupId": "g-dormitorios","blockId": "b-dorm-choice", "itemId": "i-1dorm" },      "to": { "groupId": "g-orcamento" } },
+    { "id": "e-dorm-2",      "from": { "groupId": "g-dormitorios","blockId": "b-dorm-choice", "itemId": "i-2dorm" },      "to": { "groupId": "g-orcamento" } },
+    { "id": "e-dorm-3",      "from": { "groupId": "g-dormitorios","blockId": "b-dorm-choice", "itemId": "i-3dorm" },      "to": { "groupId": "g-orcamento" } },
+    { "id": "e-orc-1",       "from": { "groupId": "g-orcamento", "blockId": "b-orc-choice", "itemId": "i-orc1" },        "to": { "groupId": "g-nome" } },
+    { "id": "e-orc-2",       "from": { "groupId": "g-orcamento", "blockId": "b-orc-choice", "itemId": "i-orc2" },        "to": { "groupId": "g-nome" } },
+    { "id": "e-orc-3",       "from": { "groupId": "g-orcamento", "blockId": "b-orc-choice", "itemId": "i-orc3" },        "to": { "groupId": "g-nome" } },
+    { "id": "e-orc-4",       "from": { "groupId": "g-orcamento", "blockId": "b-orc-choice", "itemId": "i-orc4" },        "to": { "groupId": "g-nome" } },
+    { "id": "e-nome-tel",    "from": { "groupId": "g-nome",      "blockId": "b-nome-input" },                             "to": { "groupId": "g-tel" } },
+    { "id": "e-tel-wh",      "from": { "groupId": "g-tel",       "blockId": "b-tel-input" },                              "to": { "groupId": "g-webhook" } },
+    { "id": "e-wh-fim",      "from": { "groupId": "g-webhook",   "blockId": "b-webhook" },                                "to": { "groupId": "g-fim" } }
+  ]
+}

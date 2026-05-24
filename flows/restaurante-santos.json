@@ -1,0 +1,308 @@
+{
+  "version": "6",
+  "id": "flow-rest-santos-001",
+  "name": "Restaurante - Santos (Gonzaga)",
+  "publishedTypebotId": null,
+  "icon": "🍽️",
+  "folderId": null,
+  "publicId": "restaurante-santos",
+  "customDomain": null,
+  "theme": {
+    "general": { "font": "Inter", "background": { "type": "Color", "content": "#ffffff" } },
+    "chat": {
+      "hostBubbles": { "backgroundColor": "#0F4C81", "color": "#ffffff" },
+      "guestBubbles": { "backgroundColor": "#f0f0f0", "color": "#111111" },
+      "buttons": { "backgroundColor": "#00C896", "color": "#ffffff" }
+    }
+  },
+  "settings": {
+    "typingEmulation": { "enabled": true, "speed": 300, "maxDelay": 1.5 },
+    "isBrandingEnabled": false,
+    "isInputPrefillEnabled": true
+  },
+  "variables": [
+    { "id": "v-nome",    "name": "nome" },
+    { "id": "v-tel",     "name": "telefone" },
+    { "id": "v-data",    "name": "data_reserva" },
+    { "id": "v-horario", "name": "horario" },
+    { "id": "v-pessoas", "name": "pessoas" }
+  ],
+  "webhooks": [
+    {
+      "id": "wh-reserva",
+      "url": "https://n8n.DOMAIN/webhook/restaurante-reserva",
+      "method": "POST",
+      "headers": [{ "key": "Content-Type", "value": "application/json" }],
+      "body": "{\"nome\":\"{{nome}}\",\"telefone\":\"{{telefone}}\",\"data\":\"{{data_reserva}}\",\"horario\":\"{{horario}}\",\"pessoas\":\"{{pessoas}}\",\"timestamp\":\"{{Today}}\"}"
+    },
+    {
+      "id": "wh-handoff",
+      "url": "https://n8n.DOMAIN/webhook/restaurante-handoff",
+      "method": "POST",
+      "headers": [{ "key": "Content-Type", "value": "application/json" }],
+      "body": "{\"tipo\":\"atendente\",\"timestamp\":\"{{Today}}\"}"
+    }
+  ],
+  "groups": [
+    {
+      "id": "g-start",
+      "title": "Início",
+      "graphCoordinates": { "x": 0, "y": 300 },
+      "blocks": [{ "id": "b-start", "type": "start", "label": "Início" }]
+    },
+    {
+      "id": "g-bv",
+      "title": "Boas-vindas",
+      "graphCoordinates": { "x": 300, "y": 300 },
+      "blocks": [
+        {
+          "id": "b-bv",
+          "type": "text",
+          "content": { "richText": [
+            { "type": "p", "children": [{ "text": "Olá! Aqui é o {{NOME_RESTAURANTE}} no Gonzaga. 🍽️" }] },
+            { "type": "p", "children": [{ "text": "Como posso ajudar hoje?" }] }
+          ]}
+        }
+      ]
+    },
+    {
+      "id": "g-menu",
+      "title": "Menu Principal",
+      "graphCoordinates": { "x": 600, "y": 300 },
+      "blocks": [
+        {
+          "id": "b-menu-choice",
+          "type": "choice input",
+          "items": [
+            { "id": "i-reserva",   "content": "🗓️ Fazer Reserva" },
+            { "id": "i-cardapio",  "content": "📋 Ver Cardápio" },
+            { "id": "i-horarios",  "content": "🕐 Horários de Funcionamento" },
+            { "id": "i-atendente", "content": "💬 Falar com Atendente" }
+          ],
+          "options": { "isMultipleChoice": false, "isSearchable": false }
+        }
+      ]
+    },
+
+    {
+      "id": "g-reserva-data",
+      "title": "Reserva — Data",
+      "graphCoordinates": { "x": 900, "y": 0 },
+      "blocks": [
+        {
+          "id": "b-res-data-msg",
+          "type": "text",
+          "content": { "richText": [{ "type": "p", "children": [{ "text": "Ótimo! Para qual data você gostaria de reservar? (ex: 25/06)" }] }] }
+        },
+        {
+          "id": "b-res-data-input",
+          "type": "text input",
+          "outputVariableId": "v-data",
+          "options": { "isLong": false, "labels": { "placeholder": "DD/MM", "button": "Confirmar" } }
+        }
+      ]
+    },
+    {
+      "id": "g-reserva-horario",
+      "title": "Reserva — Horário",
+      "graphCoordinates": { "x": 1200, "y": 0 },
+      "blocks": [
+        {
+          "id": "b-res-hor-msg",
+          "type": "text",
+          "content": { "richText": [{ "type": "p", "children": [{ "text": "Qual horário prefere?" }] }] }
+        },
+        {
+          "id": "b-res-hor-choice",
+          "type": "choice input",
+          "outputVariableId": "v-horario",
+          "items": [
+            { "id": "i-12h", "content": "12h00" },
+            { "id": "i-13h", "content": "13h00" },
+            { "id": "i-19h", "content": "19h00" },
+            { "id": "i-20h", "content": "20h00" },
+            { "id": "i-21h", "content": "21h00" }
+          ],
+          "options": { "isMultipleChoice": false, "isSearchable": false }
+        }
+      ]
+    },
+    {
+      "id": "g-reserva-pessoas",
+      "title": "Reserva — Pessoas",
+      "graphCoordinates": { "x": 1500, "y": 0 },
+      "blocks": [
+        {
+          "id": "b-res-pes-msg",
+          "type": "text",
+          "content": { "richText": [{ "type": "p", "children": [{ "text": "Para quantas pessoas?" }] }] }
+        },
+        {
+          "id": "b-res-pes-choice",
+          "type": "choice input",
+          "outputVariableId": "v-pessoas",
+          "items": [
+            { "id": "i-1a2",  "content": "1 a 2 pessoas" },
+            { "id": "i-3a4",  "content": "3 a 4 pessoas" },
+            { "id": "i-5mais","content": "5 ou mais pessoas" }
+          ],
+          "options": { "isMultipleChoice": false, "isSearchable": false }
+        }
+      ]
+    },
+    {
+      "id": "g-reserva-nome",
+      "title": "Reserva — Nome",
+      "graphCoordinates": { "x": 1800, "y": 0 },
+      "blocks": [
+        {
+          "id": "b-res-nome-msg",
+          "type": "text",
+          "content": { "richText": [{ "type": "p", "children": [{ "text": "Nome para a reserva:" }] }] }
+        },
+        {
+          "id": "b-res-nome-input",
+          "type": "text input",
+          "outputVariableId": "v-nome",
+          "options": { "isLong": false, "labels": { "placeholder": "Seu nome", "button": "Enviar" } }
+        }
+      ]
+    },
+    {
+      "id": "g-reserva-tel",
+      "title": "Reserva — Telefone",
+      "graphCoordinates": { "x": 2100, "y": 0 },
+      "blocks": [
+        {
+          "id": "b-res-tel-msg",
+          "type": "text",
+          "content": { "richText": [{ "type": "p", "children": [{ "text": "WhatsApp para confirmação:" }] }] }
+        },
+        {
+          "id": "b-res-tel-input",
+          "type": "phone number input",
+          "outputVariableId": "v-tel",
+          "options": {
+            "labels": { "placeholder": "(13) 9 XXXX-XXXX", "button": "Enviar" },
+            "retryMessageContent": "Número inválido. Insira com DDD."
+          }
+        }
+      ]
+    },
+    {
+      "id": "g-reserva-webhook",
+      "title": "Reserva — Confirmar",
+      "graphCoordinates": { "x": 2400, "y": 0 },
+      "blocks": [
+        {
+          "id": "b-res-wh",
+          "type": "webhook",
+          "webhookId": "wh-reserva",
+          "options": { "isAdvancedConfig": true, "isCustomBody": true, "isExecutedOnClient": false, "responseVariableMapping": [] }
+        }
+      ]
+    },
+    {
+      "id": "g-reserva-fim",
+      "title": "Reserva — Confirmado",
+      "graphCoordinates": { "x": 2700, "y": 0 },
+      "blocks": [
+        {
+          "id": "b-res-fim",
+          "type": "text",
+          "content": { "richText": [
+            { "type": "p", "children": [{ "text": "Reserva recebida, {{nome}}! ✅" }] },
+            { "type": "p", "children": [{ "text": "{{pessoas}} para {{data_reserva}} às {{horario}}." }] },
+            { "type": "p", "children": [{ "text": "Você receberá a confirmação pelo WhatsApp em breve. Até lá! 😊" }] }
+          ]}
+        }
+      ]
+    },
+
+    {
+      "id": "g-cardapio",
+      "title": "Cardápio",
+      "graphCoordinates": { "x": 900, "y": 300 },
+      "blocks": [
+        {
+          "id": "b-cardapio-msg",
+          "type": "text",
+          "content": { "richText": [
+            { "type": "p", "children": [{ "text": "Aqui está nosso cardápio! 🍽️" }] },
+            { "type": "p", "children": [{ "text": "{{LINK_CARDAPIO}}" }] },
+            { "type": "p", "children": [{ "text": "Tem alguma dúvida sobre os pratos? Nossa equipe pode ajudar! 😊" }] }
+          ]}
+        }
+      ]
+    },
+
+    {
+      "id": "g-horarios",
+      "title": "Horários",
+      "graphCoordinates": { "x": 900, "y": 500 },
+      "blocks": [
+        {
+          "id": "b-horarios-msg",
+          "type": "text",
+          "content": { "richText": [
+            { "type": "p", "children": [{ "text": "🕐 Nossos horários de funcionamento:" }] },
+            { "type": "p", "children": [{ "text": "Terça a Sexta: 12h às 15h | 19h às 23h" }] },
+            { "type": "p", "children": [{ "text": "Sábado e Domingo: 12h às 16h | 19h às 23h30" }] },
+            { "type": "p", "children": [{ "text": "Segunda: fechado" }] },
+            { "type": "p", "children": [{ "text": "Para reservas, é só usar o menu acima! 😊" }] }
+          ]}
+        }
+      ]
+    },
+
+    {
+      "id": "g-handoff-wh",
+      "title": "Atendente — Webhook",
+      "graphCoordinates": { "x": 900, "y": 700 },
+      "blocks": [
+        {
+          "id": "b-handoff-wh",
+          "type": "webhook",
+          "webhookId": "wh-handoff",
+          "options": { "isAdvancedConfig": true, "isCustomBody": true, "isExecutedOnClient": false, "responseVariableMapping": [] }
+        }
+      ]
+    },
+    {
+      "id": "g-handoff-msg",
+      "title": "Atendente — Aguardando",
+      "graphCoordinates": { "x": 1200, "y": 700 },
+      "blocks": [
+        {
+          "id": "b-handoff-msg",
+          "type": "text",
+          "content": { "richText": [
+            { "type": "p", "children": [{ "text": "Um momento! Vou chamar nosso atendente... 💬" }] },
+            { "type": "p", "children": [{ "text": "Em instantes alguém da nossa equipe continuará o atendimento." }] }
+          ]}
+        }
+      ]
+    }
+  ],
+  "edges": [
+    { "id": "e-start-bv",    "from": { "groupId": "g-start", "blockId": "b-start" },                                         "to": { "groupId": "g-bv" } },
+    { "id": "e-bv-menu",     "from": { "groupId": "g-bv",    "blockId": "b-bv" },                                            "to": { "groupId": "g-menu" } },
+    { "id": "e-menu-res",    "from": { "groupId": "g-menu",  "blockId": "b-menu-choice", "itemId": "i-reserva" },            "to": { "groupId": "g-reserva-data" } },
+    { "id": "e-menu-card",   "from": { "groupId": "g-menu",  "blockId": "b-menu-choice", "itemId": "i-cardapio" },           "to": { "groupId": "g-cardapio" } },
+    { "id": "e-menu-hor",    "from": { "groupId": "g-menu",  "blockId": "b-menu-choice", "itemId": "i-horarios" },           "to": { "groupId": "g-horarios" } },
+    { "id": "e-menu-ate",    "from": { "groupId": "g-menu",  "blockId": "b-menu-choice", "itemId": "i-atendente" },          "to": { "groupId": "g-handoff-wh" } },
+    { "id": "e-res-data-hor","from": { "groupId": "g-reserva-data",   "blockId": "b-res-data-input" },                       "to": { "groupId": "g-reserva-horario" } },
+    { "id": "e-hor-12",      "from": { "groupId": "g-reserva-horario","blockId": "b-res-hor-choice", "itemId": "i-12h" },    "to": { "groupId": "g-reserva-pessoas" } },
+    { "id": "e-hor-13",      "from": { "groupId": "g-reserva-horario","blockId": "b-res-hor-choice", "itemId": "i-13h" },    "to": { "groupId": "g-reserva-pessoas" } },
+    { "id": "e-hor-19",      "from": { "groupId": "g-reserva-horario","blockId": "b-res-hor-choice", "itemId": "i-19h" },    "to": { "groupId": "g-reserva-pessoas" } },
+    { "id": "e-hor-20",      "from": { "groupId": "g-reserva-horario","blockId": "b-res-hor-choice", "itemId": "i-20h" },    "to": { "groupId": "g-reserva-pessoas" } },
+    { "id": "e-hor-21",      "from": { "groupId": "g-reserva-horario","blockId": "b-res-hor-choice", "itemId": "i-21h" },    "to": { "groupId": "g-reserva-pessoas" } },
+    { "id": "e-pes-1a2",     "from": { "groupId": "g-reserva-pessoas","blockId": "b-res-pes-choice", "itemId": "i-1a2" },   "to": { "groupId": "g-reserva-nome" } },
+    { "id": "e-pes-3a4",     "from": { "groupId": "g-reserva-pessoas","blockId": "b-res-pes-choice", "itemId": "i-3a4" },   "to": { "groupId": "g-reserva-nome" } },
+    { "id": "e-pes-5",       "from": { "groupId": "g-reserva-pessoas","blockId": "b-res-pes-choice", "itemId": "i-5mais" }, "to": { "groupId": "g-reserva-nome" } },
+    { "id": "e-nome-tel",    "from": { "groupId": "g-reserva-nome",   "blockId": "b-res-nome-input" },                       "to": { "groupId": "g-reserva-tel" } },
+    { "id": "e-tel-wh",      "from": { "groupId": "g-reserva-tel",    "blockId": "b-res-tel-input" },                        "to": { "groupId": "g-reserva-webhook" } },
+    { "id": "e-wh-fim",      "from": { "groupId": "g-reserva-webhook","blockId": "b-res-wh" },                               "to": { "groupId": "g-reserva-fim" } },
+    { "id": "e-handoff-msg", "from": { "groupId": "g-handoff-wh",     "blockId": "b-handoff-wh" },                           "to": { "groupId": "g-handoff-msg" } }
+  ]
+}

@@ -1,0 +1,27 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary: #0F4C81;
+  --accent:  #00C896;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  color: #0F172A;
+  background: #ffffff;
+}
+
+@layer utilities {
+  .text-balance { text-wrap: balance; }
+  .gradient-primary {
+    background: linear-gradient(135deg, #0F4C81 0%, #1A6DB5 100%);
+  }
+  .gradient-accent {
+    background: linear-gradient(135deg, #00C896 0%, #00A07A 100%);
+  }
+}

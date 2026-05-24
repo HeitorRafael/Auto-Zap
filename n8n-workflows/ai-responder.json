@@ -1,0 +1,257 @@
+{
+  "name": "AutoAtende — Resposta por IA (RAG + GPT-4o-mini)",
+  "nodes": [
+    {
+      "id": "node-webhook-msg",
+      "name": "Webhook — Mensagem Livre",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "evolution-mensagem",
+        "responseMode": "lastNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "node-checar-pergunta",
+      "name": "Checar — É Pergunta?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [500, 300],
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.body.data.message.conversation }}",
+              "operation": "isNotEmpty"
+            }
+          ],
+          "number": [
+            {
+              "value1": "={{ $json.body.data.message.conversation.length }}",
+              "operation": "larger",
+              "value2": 3
+            }
+          ]
+        },
+        "combineOperation": "all"
+      }
+    },
+    {
+      "id": "node-checar-cache",
+      "name": "Redis — Verificar Cache",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [750, 200],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $vars.REDIS_HTTP_URL }}/get/ai_cache_{{ $json.body.data.key.remoteJid }}_{{ $json.body.data.message.conversation.toLowerCase().trim().replace(/\\s+/g,'_').substring(0,50) }}",
+        "options": { "timeout": 3000, "redirect": { "redirect": { "followRedirects": true } } },
+        "onError": "continueRegularOutput"
+      }
+    },
+    {
+      "id": "node-cache-hit",
+      "name": "Cache — Tem Resposta?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1000, 200],
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.result }}",
+              "operation": "isNotEmpty"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "node-buscar-drive",
+      "name": "Google Drive — Buscar Contexto",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1250, 350],
+      "parameters": {
+        "method": "GET",
+        "url": "=https://www.googleapis.com/drive/v3/files?q='{{ $vars.DRIVE_FOLDER_ID }}'+in+parents+and+mimeType='text/plain'&fields=files(id,name)&key={{ $vars.GOOGLE_DRIVE_API_KEY }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "node-ler-arquivos",
+      "name": "Ler Arquivos do Drive",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1500, 350],
+      "parameters": {
+        "jsCode": "// Lê o conteúdo de cada arquivo e concatena\n// Limitado a 8000 tokens (~32000 caracteres)\nconst files = $input.first().json.files || [];\nconst MAX_CHARS = 32000;\n\nlet contexto = '';\nfor (const file of files) {\n  // Nota: na implementação real, fazer fetch do conteúdo de cada arquivo\n  // Aqui retornamos o array de IDs para o próximo node processar\n  contexto += `[Arquivo: ${file.name} | ID: ${file.id}]\\n`;\n}\n\nconst mensagem = $('Webhook — Mensagem Livre').first().json.body?.data?.message?.conversation || '';\nconst telefone = $('Webhook — Mensagem Livre').first().json.body?.data?.key?.remoteJid || '';\nconst instancia = $('Webhook — Mensagem Livre').first().json.body?.instance || '';\n\nreturn [{\n  json: {\n    mensagem,\n    telefone,\n    instancia,\n    filesContext: contexto,\n    filesList: files\n  }\n}];"
+      }
+    },
+    {
+      "id": "node-openai",
+      "name": "OpenAI — GPT-4o-mini",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1,
+      "position": [1750, 350],
+      "parameters": {
+        "resource": "text",
+        "operation": "message",
+        "modelId": "gpt-4o-mini",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "=Você é o assistente virtual da empresa {{ $vars.NOME_CLIENTE }}.\nResponda APENAS com base nas informações fornecidas abaixo.\nSe a pergunta não puder ser respondida com essas informações, responda: 'Vou verificar isso com nossa equipe e te retorno em breve! 😊'\nSeja direto, amigável e use no máximo 3 frases. Nunca invente informações.\n\nINFORMAÇÕES DA EMPRESA:\n{{ $json.filesContext }}"
+            },
+            {
+              "role": "user",
+              "content": "={{ $json.mensagem }}"
+            }
+          ]
+        },
+        "options": {
+          "maxTokens": 300,
+          "temperature": 0.3
+        }
+      },
+      "credentials": { "openAiApi": { "id": "cred-openai", "name": "OpenAI" } }
+    },
+    {
+      "id": "node-checar-resposta-ia",
+      "name": "IA Soube Responder?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [2000, 350],
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.message.content }}",
+              "operation": "notContains",
+              "value2": "Vou verificar"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "node-salvar-cache",
+      "name": "Redis — Salvar Cache (1h)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [2250, 200],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $vars.REDIS_HTTP_URL }}/set",
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={\n  \"key\": \"ai_cache_{{ $('Ler Arquivos do Drive').first().json.telefone }}_{{ $('Ler Arquivos do Drive').first().json.mensagem.toLowerCase().trim().replace(/\\s+/g,'_').substring(0,50) }}\",\n  \"value\": \"{{ $json.message.content }}\",\n  \"ex\": 3600\n}",
+        "options": { "timeout": 3000 },
+        "onError": "continueRegularOutput"
+      }
+    },
+    {
+      "id": "node-enviar-resposta-ia",
+      "name": "Evolution — Enviar Resposta IA",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [2500, 200],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $vars.EVOLUTION_URL }}/message/sendText/{{ $('Ler Arquivos do Drive').first().json.instancia }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "apikey", "value": "={{ $vars.EVOLUTION_API_KEY }}" }]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={\n  \"number\": \"{{ $('Ler Arquivos do Drive').first().json.telefone }}\",\n  \"text\": \"{{ $json.message.content }}\"\n}"
+      }
+    },
+    {
+      "id": "node-acionar-handoff",
+      "name": "Acionar Handoff Humano",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [2250, 500],
+      "parameters": {
+        "method": "POST",
+        "url": "=https://n8n.{{ $vars.DOMAIN }}/webhook/human-handoff",
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={\n  \"telefone\": \"{{ $('Ler Arquivos do Drive').first().json.telefone }}\",\n  \"mensagem_original\": \"{{ $('Ler Arquivos do Drive').first().json.mensagem }}\",\n  \"motivo\": \"IA não soube responder\"\n}"
+      }
+    },
+    {
+      "id": "node-enviar-cache-hit",
+      "name": "Evolution — Enviar Resposta Cache",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1250, 100],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $vars.EVOLUTION_URL }}/message/sendText/{{ $('Webhook — Mensagem Livre').first().json.body.instance }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "apikey", "value": "={{ $vars.EVOLUTION_API_KEY }}" }]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={\n  \"number\": \"{{ $('Webhook — Mensagem Livre').first().json.body.data.key.remoteJid }}\",\n  \"text\": \"{{ $json.result }}\"\n}"
+      }
+    },
+    {
+      "id": "node-ignorar",
+      "name": "Ignorar — Não é Pergunta",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [750, 450],
+      "parameters": {}
+    }
+  ],
+  "connections": {
+    "Webhook — Mensagem Livre": {
+      "main": [[{ "node": "Checar — É Pergunta?", "type": "main", "index": 0 }]]
+    },
+    "Checar — É Pergunta?": {
+      "main": [
+        [{ "node": "Redis — Verificar Cache", "type": "main", "index": 0 }],
+        [{ "node": "Ignorar — Não é Pergunta", "type": "main", "index": 0 }]
+      ]
+    },
+    "Redis — Verificar Cache": {
+      "main": [[{ "node": "Cache — Tem Resposta?", "type": "main", "index": 0 }]]
+    },
+    "Cache — Tem Resposta?": {
+      "main": [
+        [{ "node": "Evolution — Enviar Resposta Cache", "type": "main", "index": 0 }],
+        [{ "node": "Google Drive — Buscar Contexto", "type": "main", "index": 0 }]
+      ]
+    },
+    "Google Drive — Buscar Contexto": {
+      "main": [[{ "node": "Ler Arquivos do Drive", "type": "main", "index": 0 }]]
+    },
+    "Ler Arquivos do Drive": {
+      "main": [[{ "node": "OpenAI — GPT-4o-mini", "type": "main", "index": 0 }]]
+    },
+    "OpenAI — GPT-4o-mini": {
+      "main": [[{ "node": "IA Soube Responder?", "type": "main", "index": 0 }]]
+    },
+    "IA Soube Responder?": {
+      "main": [
+        [{ "node": "Redis — Salvar Cache (1h)", "type": "main", "index": 0 }],
+        [{ "node": "Acionar Handoff Humano", "type": "main", "index": 0 }]
+      ]
+    },
+    "Redis — Salvar Cache (1h)": {
+      "main": [[{ "node": "Evolution — Enviar Resposta IA", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": [{ "name": "autoatende" }, { "name": "ai-responder" }],
+  "meta": { "instanceId": "autoatende" }
+}

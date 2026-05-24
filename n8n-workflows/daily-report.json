@@ -1,0 +1,133 @@
+{
+  "name": "AutoAtende — Relatório Semanal Automático",
+  "nodes": [
+    {
+      "id": "node-cron",
+      "name": "Cron — Segunda-feira 8h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * 1"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "node-ler-leads",
+      "name": "Sheets — Ler Leads da Semana",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [500, 300],
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $vars.SHEETS_ID_CLIENTE }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Leads",
+          "mode": "name"
+        },
+        "options": { "returnFirstMatch": false }
+      },
+      "credentials": { "googleSheetsOAuth2Api": { "id": "cred-sheets", "name": "Google Sheets" } }
+    },
+    {
+      "id": "node-calcular-metricas",
+      "name": "Calcular Métricas da Semana",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [750, 300],
+      "parameters": {
+        "jsCode": "const leads = $input.all().map(i => i.json);\n\n// Data de 7 dias atrás\nconst agora = new Date();\nconst seteDiasAtras = new Date();\nseteDiasAtras.setDate(agora.getDate() - 7);\n\n// Filtrar apenas leads da última semana\nconst leadsSemana = leads.filter(l => {\n  if (!l['Data/Hora']) return false;\n  // Tenta parsear a data no formato pt-BR: DD/MM/YYYY HH:mm\n  const partes = l['Data/Hora'].split(' ');\n  const dataParts = (partes[0] || '').split('/');\n  if (dataParts.length < 3) return false;\n  const dataLead = new Date(dataParts[2], dataParts[1]-1, dataParts[0]);\n  return dataLead >= seteDiasAtras;\n});\n\nconst total        = leadsSemana.length;\nconst qualificados = leadsSemana.filter(l => l.Status && l.Status !== 'Novo').length;\nconst transferidos = leadsSemana.filter(l => l.Status === 'Transferido').length;\nconst fechados     = leadsSemana.filter(l => l.Status === 'Fechado').length;\nconst perdidos     = leadsSemana.filter(l => l.Status === 'Perdido').length;\n\nconst taxaConversao = total > 0 ? ((fechados / total) * 100).toFixed(1) : 0;\nconst taxaQualif    = total > 0 ? ((qualificados / total) * 100).toFixed(1) : 0;\n\n// Contar leads por dia da semana\nconst diasSemana = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];\nconst porDia = {};\ndiasSemana.forEach(d => porDia[d] = 0);\n\nleadsSemana.forEach(l => {\n  if (!l['Data/Hora']) return;\n  const partes = l['Data/Hora'].split(' ');\n  const dataParts = (partes[0] || '').split('/');\n  if (dataParts.length < 3) return;\n  const dataLead = new Date(dataParts[2], dataParts[1]-1, dataParts[0]);\n  const dia = diasSemana[dataLead.getDay()];\n  porDia[dia] = (porDia[dia] || 0) + 1;\n});\n\nconst diaTop = Object.entries(porDia).sort((a,b) => b[1]-a[1])[0];\n\nconst dataInicio = seteDiasAtras.toLocaleDateString('pt-BR');\nconst dataFim    = agora.toLocaleDateString('pt-BR');\n\nreturn [{\n  json: {\n    total, qualificados, transferidos, fechados, perdidos,\n    taxaConversao, taxaQualif,\n    porDia,\n    diaTop: diaTop ? `${diaTop[0]} (${diaTop[1]} leads)` : 'N/A',\n    periodo: `${dataInicio} a ${dataFim}`\n  }\n}];"
+      }
+    },
+    {
+      "id": "node-montar-relatorio",
+      "name": "Montar Mensagem do Relatório",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1000, 300],
+      "parameters": {
+        "jsCode": "const m = $input.first().json;\n\nconst barras = Object.entries(m.porDia)\n  .map(([dia, qtd]) => `${dia}: ${'█'.repeat(qtd)}${'░'.repeat(Math.max(0, 5-qtd))} (${qtd})`)\n  .join('\\n');\n\nconst mensagem = `📊 *Relatório Semanal — AutoAtende*\n` +\n  `Período: ${m.periodo}\\n\\n` +\n  `📥 Leads recebidos: *${m.total}*\\n` +\n  `✅ Qualificados: *${m.qualificados}* (${m.taxaQualif}%)\\n` +\n  `💬 Transferidos para humano: *${m.transferidos}*\\n` +\n  `🤝 Fechados: *${m.fechados}*\\n` +\n  `🎯 Taxa de conversão: *${m.taxaConversao}%*\\n\\n` +\n  `📅 Leads por dia:\\n${barras}\\n\\n` +\n  `📈 Dia mais movimentado: ${m.diaTop}\\n\\n` +\n  `_Relatório gerado automaticamente pelo AutoAtende_ 🤖`;\n\nreturn [{ json: { mensagem } }];"
+      }
+    },
+    {
+      "id": "node-enviar-relatorio",
+      "name": "Evolution — Enviar Relatório",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1250, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $vars.EVOLUTION_URL }}/message/sendText/{{ $vars.INSTANCE_NAME }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "apikey", "value": "={{ $vars.EVOLUTION_API_KEY }}" }]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={\n  \"number\": \"{{ $vars.TELEFONE_DONO }}\",\n  \"text\": \"{{ $json.mensagem }}\"\n}"
+      }
+    },
+    {
+      "id": "node-log-envio",
+      "name": "Log — Relatório Enviado",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [1500, 300],
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $vars.SHEETS_ID_CLIENTE }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Relatórios",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Data":         "={{ new Date().toLocaleString('pt-BR', {timeZone:'America/Sao_Paulo'}) }}",
+            "Total Leads":  "={{ $('Calcular Métricas da Semana').first().json.total }}",
+            "Qualificados": "={{ $('Calcular Métricas da Semana').first().json.qualificados }}",
+            "Fechados":     "={{ $('Calcular Métricas da Semana').first().json.fechados }}",
+            "Conversão %":  "={{ $('Calcular Métricas da Semana').first().json.taxaConversao }}"
+          }
+        }
+      },
+      "credentials": { "googleSheetsOAuth2Api": { "id": "cred-sheets", "name": "Google Sheets" } }
+    }
+  ],
+  "connections": {
+    "Cron — Segunda-feira 8h": {
+      "main": [[{ "node": "Sheets — Ler Leads da Semana", "type": "main", "index": 0 }]]
+    },
+    "Sheets — Ler Leads da Semana": {
+      "main": [[{ "node": "Calcular Métricas da Semana", "type": "main", "index": 0 }]]
+    },
+    "Calcular Métricas da Semana": {
+      "main": [[{ "node": "Montar Mensagem do Relatório", "type": "main", "index": 0 }]]
+    },
+    "Montar Mensagem do Relatório": {
+      "main": [[{ "node": "Evolution — Enviar Relatório", "type": "main", "index": 0 }]]
+    },
+    "Evolution — Enviar Relatório": {
+      "main": [[{ "node": "Log — Relatório Enviado", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": [{ "name": "autoatende" }, { "name": "relatorio" }],
+  "meta": { "instanceId": "autoatende" }
+}

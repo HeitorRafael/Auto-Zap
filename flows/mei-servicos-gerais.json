@@ -1,0 +1,249 @@
+{
+  "version": "6",
+  "id": "flow-mei-001",
+  "name": "MEI — Serviços Gerais",
+  "publishedTypebotId": null,
+  "icon": "🔧",
+  "folderId": null,
+  "publicId": "mei-servicos-gerais",
+  "customDomain": null,
+  "theme": {
+    "general": { "font": "Inter", "background": { "type": "Color", "content": "#ffffff" } },
+    "chat": {
+      "hostBubbles": { "backgroundColor": "#0F4C81", "color": "#ffffff" },
+      "guestBubbles": { "backgroundColor": "#f0f0f0", "color": "#111111" },
+      "buttons": { "backgroundColor": "#00C896", "color": "#ffffff" }
+    }
+  },
+  "settings": {
+    "typingEmulation": { "enabled": true, "speed": 300, "maxDelay": 1.5 },
+    "isBrandingEnabled": false,
+    "isInputPrefillEnabled": true
+  },
+  "variables": [
+    { "id": "v-nome",     "name": "nome" },
+    { "id": "v-tel",      "name": "telefone" },
+    { "id": "v-servico",  "name": "servico_desejado" },
+    { "id": "v-descricao","name": "descricao" }
+  ],
+  "webhooks": [
+    {
+      "id": "wh-mei-lead",
+      "url": "https://n8n.DOMAIN/webhook/mei-lead",
+      "method": "POST",
+      "headers": [{ "key": "Content-Type", "value": "application/json" }],
+      "body": "{\"nome\":\"{{nome}}\",\"telefone\":\"{{telefone}}\",\"servico\":\"{{servico_desejado}}\",\"descricao\":\"{{descricao}}\",\"timestamp\":\"{{Today}}\"}"
+    }
+  ],
+  "groups": [
+    {
+      "id": "g-start",
+      "title": "Início",
+      "graphCoordinates": { "x": 0, "y": 200 },
+      "blocks": [{ "id": "b-start", "type": "start", "label": "Início" }]
+    },
+    {
+      "id": "g-bv",
+      "title": "Boas-vindas",
+      "graphCoordinates": { "x": 300, "y": 200 },
+      "blocks": [
+        {
+          "id": "b-bv",
+          "type": "text",
+          "content": { "richText": [
+            { "type": "p", "children": [{ "text": "Olá! Aqui é o {{NOME_MEI}}. 👋" }] },
+            { "type": "p", "children": [{ "text": "Como posso te ajudar hoje?" }] }
+          ]}
+        }
+      ]
+    },
+    {
+      "id": "g-menu",
+      "title": "Menu Principal",
+      "graphCoordinates": { "x": 600, "y": 200 },
+      "blocks": [
+        {
+          "id": "b-menu-choice",
+          "type": "choice input",
+          "items": [
+            { "id": "i-orcamento", "content": "💰 Solicitar orçamento" },
+            { "id": "i-servicos",  "content": "🔧 Ver serviços" },
+            { "id": "i-horarios",  "content": "🕐 Horários de atendimento" },
+            { "id": "i-contato",   "content": "📞 Entrar em contato" }
+          ],
+          "options": { "isMultipleChoice": false, "isSearchable": false }
+        }
+      ]
+    },
+
+    {
+      "id": "g-orc-servico",
+      "title": "Orçamento — Serviço",
+      "graphCoordinates": { "x": 900, "y": 0 },
+      "blocks": [
+        {
+          "id": "b-orc-serv-msg",
+          "type": "text",
+          "content": { "richText": [{ "type": "p", "children": [{ "text": "Qual serviço você precisa?" }] }] }
+        },
+        {
+          "id": "b-orc-serv-input",
+          "type": "text input",
+          "outputVariableId": "v-servico",
+          "options": { "isLong": false, "labels": { "placeholder": "Ex: instalação elétrica, pintura...", "button": "Enviar" } }
+        }
+      ]
+    },
+    {
+      "id": "g-orc-descricao",
+      "title": "Orçamento — Descrição",
+      "graphCoordinates": { "x": 1200, "y": 0 },
+      "blocks": [
+        {
+          "id": "b-orc-desc-msg",
+          "type": "text",
+          "content": { "richText": [{ "type": "p", "children": [{ "text": "Me conta um pouco mais sobre o que precisa fazer:" }] }] }
+        },
+        {
+          "id": "b-orc-desc-input",
+          "type": "text input",
+          "outputVariableId": "v-descricao",
+          "options": { "isLong": true, "labels": { "placeholder": "Descreva o serviço...", "button": "Enviar" } }
+        }
+      ]
+    },
+    {
+      "id": "g-orc-nome",
+      "title": "Orçamento — Nome",
+      "graphCoordinates": { "x": 1500, "y": 0 },
+      "blocks": [
+        {
+          "id": "b-orc-nome-msg",
+          "type": "text",
+          "content": { "richText": [{ "type": "p", "children": [{ "text": "Seu nome:" }] }] }
+        },
+        {
+          "id": "b-orc-nome-input",
+          "type": "text input",
+          "outputVariableId": "v-nome",
+          "options": { "isLong": false, "labels": { "placeholder": "Seu nome", "button": "Enviar" } }
+        }
+      ]
+    },
+    {
+      "id": "g-orc-tel",
+      "title": "Orçamento — Telefone",
+      "graphCoordinates": { "x": 1800, "y": 0 },
+      "blocks": [
+        {
+          "id": "b-orc-tel-msg",
+          "type": "text",
+          "content": { "richText": [{ "type": "p", "children": [{ "text": "WhatsApp para retorno:" }] }] }
+        },
+        {
+          "id": "b-orc-tel-input",
+          "type": "phone number input",
+          "outputVariableId": "v-tel",
+          "options": {
+            "labels": { "placeholder": "(13) 9 XXXX-XXXX", "button": "Enviar" },
+            "retryMessageContent": "Número inválido. Insira com DDD."
+          }
+        }
+      ]
+    },
+    {
+      "id": "g-orc-webhook",
+      "title": "Orçamento — Webhook",
+      "graphCoordinates": { "x": 2100, "y": 0 },
+      "blocks": [
+        {
+          "id": "b-orc-wh",
+          "type": "webhook",
+          "webhookId": "wh-mei-lead",
+          "options": { "isAdvancedConfig": true, "isCustomBody": true, "isExecutedOnClient": false, "responseVariableMapping": [] }
+        }
+      ]
+    },
+    {
+      "id": "g-orc-fim",
+      "title": "Orçamento — Confirmado",
+      "graphCoordinates": { "x": 2400, "y": 0 },
+      "blocks": [
+        {
+          "id": "b-orc-fim",
+          "type": "text",
+          "content": { "richText": [
+            { "type": "p", "children": [{ "text": "Pedido de orçamento recebido, {{nome}}! ✅" }] },
+            { "type": "p", "children": [{ "text": "Vou analisar e entrar em contato pelo seu WhatsApp em breve." }] },
+            { "type": "p", "children": [{ "text": "Obrigado pelo contato! 🤝" }] }
+          ]}
+        }
+      ]
+    },
+
+    {
+      "id": "g-servicos",
+      "title": "Serviços",
+      "graphCoordinates": { "x": 900, "y": 300 },
+      "blocks": [
+        {
+          "id": "b-servicos-msg",
+          "type": "text",
+          "content": { "richText": [
+            { "type": "p", "children": [{ "text": "🔧 Serviços que oferecemos:" }] },
+            { "type": "p", "children": [{ "text": "{{LISTA_SERVICOS}}" }] },
+            { "type": "p", "children": [{ "text": "Para solicitar orçamento, é só usar o menu acima! ⬆️" }] }
+          ]}
+        }
+      ]
+    },
+
+    {
+      "id": "g-horarios",
+      "title": "Horários",
+      "graphCoordinates": { "x": 900, "y": 500 },
+      "blocks": [
+        {
+          "id": "b-horarios-msg",
+          "type": "text",
+          "content": { "richText": [
+            { "type": "p", "children": [{ "text": "🕐 Horários de atendimento:" }] },
+            { "type": "p", "children": [{ "text": "{{HORARIOS_ATENDIMENTO}}" }] },
+            { "type": "p", "children": [{ "text": "Fora do horário, deixe seu pedido de orçamento e retorno em breve! 😊" }] }
+          ]}
+        }
+      ]
+    },
+
+    {
+      "id": "g-contato-msg",
+      "title": "Contato",
+      "graphCoordinates": { "x": 900, "y": 700 },
+      "blocks": [
+        {
+          "id": "b-contato-msg",
+          "type": "text",
+          "content": { "richText": [
+            { "type": "p", "children": [{ "text": "📞 Contatos:" }] },
+            { "type": "p", "children": [{ "text": "WhatsApp: {{TELEFONE_CONTATO}}" }] },
+            { "type": "p", "children": [{ "text": "{{EMAIL_CONTATO}}" }] },
+            { "type": "p", "children": [{ "text": "Ou deixe seu pedido pelo menu acima e eu entro em contato! 👆" }] }
+          ]}
+        }
+      ]
+    }
+  ],
+  "edges": [
+    { "id": "e-start-bv",  "from": { "groupId": "g-start", "blockId": "b-start" },                                         "to": { "groupId": "g-bv" } },
+    { "id": "e-bv-menu",   "from": { "groupId": "g-bv",    "blockId": "b-bv" },                                            "to": { "groupId": "g-menu" } },
+    { "id": "e-menu-orc",  "from": { "groupId": "g-menu",  "blockId": "b-menu-choice", "itemId": "i-orcamento" },          "to": { "groupId": "g-orc-servico" } },
+    { "id": "e-menu-serv", "from": { "groupId": "g-menu",  "blockId": "b-menu-choice", "itemId": "i-servicos" },           "to": { "groupId": "g-servicos" } },
+    { "id": "e-menu-hor",  "from": { "groupId": "g-menu",  "blockId": "b-menu-choice", "itemId": "i-horarios" },           "to": { "groupId": "g-horarios" } },
+    { "id": "e-menu-cont", "from": { "groupId": "g-menu",  "blockId": "b-menu-choice", "itemId": "i-contato" },            "to": { "groupId": "g-contato-msg" } },
+    { "id": "e-serv-desc", "from": { "groupId": "g-orc-servico",  "blockId": "b-orc-serv-input" },                         "to": { "groupId": "g-orc-descricao" } },
+    { "id": "e-desc-nome", "from": { "groupId": "g-orc-descricao","blockId": "b-orc-desc-input" },                         "to": { "groupId": "g-orc-nome" } },
+    { "id": "e-nome-tel",  "from": { "groupId": "g-orc-nome",     "blockId": "b-orc-nome-input" },                         "to": { "groupId": "g-orc-tel" } },
+    { "id": "e-tel-wh",    "from": { "groupId": "g-orc-tel",      "blockId": "b-orc-tel-input" },                          "to": { "groupId": "g-orc-webhook" } },
+    { "id": "e-wh-fim",    "from": { "groupId": "g-orc-webhook",  "blockId": "b-orc-wh" },                                 "to": { "groupId": "g-orc-fim" } }
+  ]
+}

@@ -1,0 +1,306 @@
+{
+  "version": "6",
+  "id": "flow-clinica-001",
+  "name": "Clínica / Estética",
+  "publishedTypebotId": null,
+  "icon": "✨",
+  "folderId": null,
+  "publicId": "clinica-estetica",
+  "customDomain": null,
+  "theme": {
+    "general": { "font": "Inter", "background": { "type": "Color", "content": "#ffffff" } },
+    "chat": {
+      "hostBubbles": { "backgroundColor": "#0F4C81", "color": "#ffffff" },
+      "guestBubbles": { "backgroundColor": "#f0f0f0", "color": "#111111" },
+      "buttons": { "backgroundColor": "#00C896", "color": "#ffffff" }
+    }
+  },
+  "settings": {
+    "typingEmulation": { "enabled": true, "speed": 300, "maxDelay": 1.5 },
+    "isBrandingEnabled": false,
+    "isInputPrefillEnabled": true
+  },
+  "variables": [
+    { "id": "v-nome",        "name": "nome" },
+    { "id": "v-tel",         "name": "telefone" },
+    { "id": "v-procedimento","name": "procedimento" },
+    { "id": "v-data",        "name": "data_preferida" },
+    { "id": "v-periodo",     "name": "periodo" }
+  ],
+  "webhooks": [
+    {
+      "id": "wh-agendamento",
+      "url": "https://n8n.DOMAIN/webhook/clinica-agendamento",
+      "method": "POST",
+      "headers": [{ "key": "Content-Type", "value": "application/json" }],
+      "body": "{\"nome\":\"{{nome}}\",\"telefone\":\"{{telefone}}\",\"procedimento\":\"{{procedimento}}\",\"data\":\"{{data_preferida}}\",\"periodo\":\"{{periodo}}\",\"timestamp\":\"{{Today}}\"}"
+    },
+    {
+      "id": "wh-handoff-clinica",
+      "url": "https://n8n.DOMAIN/webhook/clinica-handoff",
+      "method": "POST",
+      "headers": [{ "key": "Content-Type", "value": "application/json" }],
+      "body": "{\"tipo\":\"equipe\",\"timestamp\":\"{{Today}}\"}"
+    }
+  ],
+  "groups": [
+    {
+      "id": "g-start",
+      "title": "Início",
+      "graphCoordinates": { "x": 0, "y": 300 },
+      "blocks": [{ "id": "b-start", "type": "start", "label": "Início" }]
+    },
+    {
+      "id": "g-bv",
+      "title": "Boas-vindas",
+      "graphCoordinates": { "x": 300, "y": 300 },
+      "blocks": [
+        {
+          "id": "b-bv",
+          "type": "text",
+          "content": { "richText": [
+            { "type": "p", "children": [{ "text": "Olá! Seja bem-vinda à {{NOME_CLINICA}}. ✨" }] },
+            { "type": "p", "children": [{ "text": "Sou a assistente virtual. Como posso te ajudar?" }] }
+          ]}
+        }
+      ]
+    },
+    {
+      "id": "g-menu",
+      "title": "Menu",
+      "graphCoordinates": { "x": 600, "y": 300 },
+      "blocks": [
+        {
+          "id": "b-menu-choice",
+          "type": "choice input",
+          "items": [
+            { "id": "i-agendar",       "content": "📅 Agendar horário" },
+            { "id": "i-procedimentos", "content": "💆 Ver procedimentos e valores" },
+            { "id": "i-preparacao",    "content": "📋 Como me preparar?" },
+            { "id": "i-equipe",        "content": "💬 Falar com a equipe" }
+          ],
+          "options": { "isMultipleChoice": false, "isSearchable": false }
+        }
+      ]
+    },
+
+    {
+      "id": "g-ag-procedimento",
+      "title": "Agendar — Procedimento",
+      "graphCoordinates": { "x": 900, "y": 0 },
+      "blocks": [
+        {
+          "id": "b-ag-proc-msg",
+          "type": "text",
+          "content": { "richText": [{ "type": "p", "children": [{ "text": "Qual procedimento você gostaria de agendar?" }] }] }
+        },
+        {
+          "id": "b-ag-proc-choice",
+          "type": "choice input",
+          "outputVariableId": "v-procedimento",
+          "items": [
+            { "id": "i-limpeza",    "content": "Limpeza de pele" },
+            { "id": "i-botox",      "content": "Botox" },
+            { "id": "i-peeling",    "content": "Peeling" },
+            { "id": "i-drenagem",   "content": "Drenagem linfática" },
+            { "id": "i-outro-proc", "content": "Outro procedimento" }
+          ],
+          "options": { "isMultipleChoice": false, "isSearchable": false }
+        }
+      ]
+    },
+    {
+      "id": "g-ag-data",
+      "title": "Agendar — Data",
+      "graphCoordinates": { "x": 1200, "y": 0 },
+      "blocks": [
+        {
+          "id": "b-ag-data-msg",
+          "type": "text",
+          "content": { "richText": [{ "type": "p", "children": [{ "text": "Qual data você prefere? (ex: 25/06)" }] }] }
+        },
+        {
+          "id": "b-ag-data-input",
+          "type": "text input",
+          "outputVariableId": "v-data",
+          "options": { "isLong": false, "labels": { "placeholder": "DD/MM", "button": "Confirmar" } }
+        }
+      ]
+    },
+    {
+      "id": "g-ag-periodo",
+      "title": "Agendar — Período",
+      "graphCoordinates": { "x": 1500, "y": 0 },
+      "blocks": [
+        {
+          "id": "b-ag-per-msg",
+          "type": "text",
+          "content": { "richText": [{ "type": "p", "children": [{ "text": "Prefere manhã ou tarde?" }] }] }
+        },
+        {
+          "id": "b-ag-per-choice",
+          "type": "choice input",
+          "outputVariableId": "v-periodo",
+          "items": [
+            { "id": "i-manha", "content": "☀️ Manhã (8h às 12h)" },
+            { "id": "i-tarde", "content": "🌤️ Tarde (13h às 18h)" }
+          ],
+          "options": { "isMultipleChoice": false, "isSearchable": false }
+        }
+      ]
+    },
+    {
+      "id": "g-ag-nome",
+      "title": "Agendar — Nome",
+      "graphCoordinates": { "x": 1800, "y": 0 },
+      "blocks": [
+        {
+          "id": "b-ag-nome-msg",
+          "type": "text",
+          "content": { "richText": [{ "type": "p", "children": [{ "text": "Seu nome completo:" }] }] }
+        },
+        {
+          "id": "b-ag-nome-input",
+          "type": "text input",
+          "outputVariableId": "v-nome",
+          "options": { "isLong": false, "labels": { "placeholder": "Nome", "button": "Enviar" } }
+        }
+      ]
+    },
+    {
+      "id": "g-ag-tel",
+      "title": "Agendar — Telefone",
+      "graphCoordinates": { "x": 2100, "y": 0 },
+      "blocks": [
+        {
+          "id": "b-ag-tel-msg",
+          "type": "text",
+          "content": { "richText": [{ "type": "p", "children": [{ "text": "Seu WhatsApp para confirmação:" }] }] }
+        },
+        {
+          "id": "b-ag-tel-input",
+          "type": "phone number input",
+          "outputVariableId": "v-tel",
+          "options": {
+            "labels": { "placeholder": "(13) 9 XXXX-XXXX", "button": "Enviar" },
+            "retryMessageContent": "Número inválido. Insira com DDD."
+          }
+        }
+      ]
+    },
+    {
+      "id": "g-ag-webhook",
+      "title": "Agendar — Webhook",
+      "graphCoordinates": { "x": 2400, "y": 0 },
+      "blocks": [
+        {
+          "id": "b-ag-wh",
+          "type": "webhook",
+          "webhookId": "wh-agendamento",
+          "options": { "isAdvancedConfig": true, "isCustomBody": true, "isExecutedOnClient": false, "responseVariableMapping": [] }
+        }
+      ]
+    },
+    {
+      "id": "g-ag-fim",
+      "title": "Agendar — Confirmado",
+      "graphCoordinates": { "x": 2700, "y": 0 },
+      "blocks": [
+        {
+          "id": "b-ag-fim",
+          "type": "text",
+          "content": { "richText": [
+            { "type": "p", "children": [{ "text": "Solicitação enviada, {{nome}}! 🎉" }] },
+            { "type": "p", "children": [{ "text": "{{procedimento}} para {{data_preferida}} ({{periodo}})." }] },
+            { "type": "p", "children": [{ "text": "Nossa equipe vai confirmar seu horário pelo WhatsApp em breve. Até lá! ✨" }] }
+          ]}
+        }
+      ]
+    },
+
+    {
+      "id": "g-procedimentos",
+      "title": "Procedimentos e Valores",
+      "graphCoordinates": { "x": 900, "y": 300 },
+      "blocks": [
+        {
+          "id": "b-proc-msg",
+          "type": "text",
+          "content": { "richText": [
+            { "type": "p", "children": [{ "text": "Nossos procedimentos e valores: 💆" }] },
+            { "type": "p", "children": [{ "text": "{{LINK_TABELA_VALORES}}" }] },
+            { "type": "p", "children": [{ "text": "Quer agendar? Use o menu abaixo! ⬆️" }] }
+          ]}
+        }
+      ]
+    },
+
+    {
+      "id": "g-preparacao",
+      "title": "Preparação",
+      "graphCoordinates": { "x": 900, "y": 550 },
+      "blocks": [
+        {
+          "id": "b-prep-msg",
+          "type": "text",
+          "content": { "richText": [
+            { "type": "p", "children": [{ "text": "📋 Orientações gerais de preparação:" }] },
+            { "type": "p", "children": [{ "text": "• Venha com a pele limpa e sem maquiagem" }] },
+            { "type": "p", "children": [{ "text": "• Evite sol intenso 48h antes do procedimento" }] },
+            { "type": "p", "children": [{ "text": "• Hidrate-se bem no dia anterior" }] },
+            { "type": "p", "children": [{ "text": "Para orientações específicas do seu procedimento, nossa equipe pode te ajudar! 😊" }] }
+          ]}
+        }
+      ]
+    },
+
+    {
+      "id": "g-equipe-wh",
+      "title": "Equipe — Webhook",
+      "graphCoordinates": { "x": 900, "y": 750 },
+      "blocks": [
+        {
+          "id": "b-equipe-wh",
+          "type": "webhook",
+          "webhookId": "wh-handoff-clinica",
+          "options": { "isAdvancedConfig": true, "isCustomBody": true, "isExecutedOnClient": false, "responseVariableMapping": [] }
+        }
+      ]
+    },
+    {
+      "id": "g-equipe-msg",
+      "title": "Equipe — Aguardando",
+      "graphCoordinates": { "x": 1200, "y": 750 },
+      "blocks": [
+        {
+          "id": "b-equipe-msg",
+          "type": "text",
+          "content": { "richText": [
+            { "type": "p", "children": [{ "text": "Um momento! Vou chamar alguém da nossa equipe. 💬" }] },
+            { "type": "p", "children": [{ "text": "Em instantes continuamos o atendimento. ✨" }] }
+          ]}
+        }
+      ]
+    }
+  ],
+  "edges": [
+    { "id": "e-start-bv",   "from": { "groupId": "g-start",  "blockId": "b-start" },                                              "to": { "groupId": "g-bv" } },
+    { "id": "e-bv-menu",    "from": { "groupId": "g-bv",     "blockId": "b-bv" },                                                 "to": { "groupId": "g-menu" } },
+    { "id": "e-menu-ag",    "from": { "groupId": "g-menu",   "blockId": "b-menu-choice", "itemId": "i-agendar" },                 "to": { "groupId": "g-ag-procedimento" } },
+    { "id": "e-menu-proc",  "from": { "groupId": "g-menu",   "blockId": "b-menu-choice", "itemId": "i-procedimentos" },           "to": { "groupId": "g-procedimentos" } },
+    { "id": "e-menu-prep",  "from": { "groupId": "g-menu",   "blockId": "b-menu-choice", "itemId": "i-preparacao" },              "to": { "groupId": "g-preparacao" } },
+    { "id": "e-menu-eq",    "from": { "groupId": "g-menu",   "blockId": "b-menu-choice", "itemId": "i-equipe" },                  "to": { "groupId": "g-equipe-wh" } },
+    { "id": "e-proc-limp",  "from": { "groupId": "g-ag-procedimento","blockId": "b-ag-proc-choice","itemId": "i-limpeza" },       "to": { "groupId": "g-ag-data" } },
+    { "id": "e-proc-bot",   "from": { "groupId": "g-ag-procedimento","blockId": "b-ag-proc-choice","itemId": "i-botox" },         "to": { "groupId": "g-ag-data" } },
+    { "id": "e-proc-peel",  "from": { "groupId": "g-ag-procedimento","blockId": "b-ag-proc-choice","itemId": "i-peeling" },       "to": { "groupId": "g-ag-data" } },
+    { "id": "e-proc-dren",  "from": { "groupId": "g-ag-procedimento","blockId": "b-ag-proc-choice","itemId": "i-drenagem" },      "to": { "groupId": "g-ag-data" } },
+    { "id": "e-proc-out",   "from": { "groupId": "g-ag-procedimento","blockId": "b-ag-proc-choice","itemId": "i-outro-proc" },    "to": { "groupId": "g-ag-data" } },
+    { "id": "e-data-per",   "from": { "groupId": "g-ag-data",   "blockId": "b-ag-data-input" },                                   "to": { "groupId": "g-ag-periodo" } },
+    { "id": "e-per-manha",  "from": { "groupId": "g-ag-periodo","blockId": "b-ag-per-choice", "itemId": "i-manha" },              "to": { "groupId": "g-ag-nome" } },
+    { "id": "e-per-tarde",  "from": { "groupId": "g-ag-periodo","blockId": "b-ag-per-choice", "itemId": "i-tarde" },              "to": { "groupId": "g-ag-nome" } },
+    { "id": "e-nome-tel",   "from": { "groupId": "g-ag-nome",   "blockId": "b-ag-nome-input" },                                   "to": { "groupId": "g-ag-tel" } },
+    { "id": "e-tel-wh",     "from": { "groupId": "g-ag-tel",    "blockId": "b-ag-tel-input" },                                    "to": { "groupId": "g-ag-webhook" } },
+    { "id": "e-wh-fim",     "from": { "groupId": "g-ag-webhook","blockId": "b-ag-wh" },                                           "to": { "groupId": "g-ag-fim" } },
+    { "id": "e-eq-msg",     "from": { "groupId": "g-equipe-wh", "blockId": "b-equipe-wh" },                                       "to": { "groupId": "g-equipe-msg" } }
+  ]
+}
